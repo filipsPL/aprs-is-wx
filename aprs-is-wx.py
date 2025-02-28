@@ -32,131 +32,141 @@ logging.basicConfig(
 )
 
 
-def get_wx_data(elevation):
+def get_wx_data(json_file, elevation=0):
     """
-    Read meteorological data from a file and convert it to appropriate units.
+    Read meteorological data from a JSON file and convert it to appropriate units.
+    All weather fields are optional.
 
     Args:
-        meteo_file (str): Path to the file containing meteorological data
-        elevation (float): Station elevation in meters
+        json_file (str): Path to the JSON file containing meteorological data
+        elevation (float, optional): Station elevation in meters
 
     Returns:
-        list: A list containing [temperature(F), pressure(hPa*10), humidity(%)]
+        dict: A dictionary containing all available weather data in APRS-compatible units
 
     Raises:
-        FileNotFoundError: If the meteorological data file is not found
-        ValueError: If the data cannot be parsed or converted
+        FileNotFoundError: If the JSON file is not found
+        ValueError: If the data cannot be parsed
     """
     try:
-        with open("meteo.txt", "r") as f:
-            meteo = f.read()
+        with open(json_file, "r") as f:
+            weather_data = json.load(f)
 
-        meteos = meteo.split("\n")
-
-        # Convert temperature from Celsius to Fahrenheit
-        temp = float(meteos[0])
-        temp = 9.0 / 5.0 * temp + 32
-
-        # Adjust pressure based on elevation
-        p = float(meteos[1])
-        p = p * pow((1.0 + 0.000084229 * (elevation / pow(p, 0.19028))), 5.2553)
-        p = int(float(p) * 10)
-
-        # Read humidity
-        hum = float(meteos[2])
-
-        logging.debug(f"Read data: temp={temp}F, pressure={p/10}hPa, humidity={hum}%")
-        return [temp, p, hum]
-
-    except FileNotFoundError:
-        logging.error(f"Meteorological data file not found")
-        raise
-    except (ValueError, IndexError) as e:
-        logging.error(f"Error parsing meteorological data: {e}")
-        raise
-
-
-# Load configuration from ini file
-def load_config(config_file="aprs-is-wx.ini"):
-    """
-    Load configuration settings from an INI file.
-
-    Args:
-        config_file (str): Path to the configuration file
-
-    Returns:
-        dict: Dictionary containing configuration settings
-
-    Raises:
-        FileNotFoundError: If the configuration file doesn't exist
-        configparser.Error: If there's an error parsing the configuration
-    """
-    try:
-        config = configparser.ConfigParser()
-        config.read(config_file)
-
-        settings = {
-            "ELEVATION": config.getfloat("Station", "elevation"),
-            "STATIONLATITUDE": config.getfloat("Station", "lat"),
-            "STATIONLONGITUDE": config.getfloat("Station", "lon"),
-            "STATION_TYPE": config.get("Station", "type"),
-            "APRS_HOST": config.get("APRS", "host"),
-            "APRS_PORT": config.getint("APRS", "port"),
-            "APRS_USER": config.get("APRS", "user"),
-            "APRS_PASS": config.get("APRS", "pass"),
-            "CALLSIGN": config.get("APRS", "callsign"),
+        # Initialize APRS-compatible data dictionary with all fields as None
+        aprs_data = {
+            "temperature": None,
+            "pressure": None,
+            "humidity": None,
+            "wind_dir": None,
+            "wind_speed": None,
+            "wind_gust": None,
+            "rain_since_midnight": None,
         }
 
-        return settings
+        # Process temperature if available
+        if "temperature" in weather_data:
+            temp = float(weather_data["temperature"])
+            # Convert from Celsius to Fahrenheit if needed
+            if weather_data.get("temperature_unit", "C").upper() == "C":
+                temp = 9.0 / 5.0 * temp + 32
+            aprs_data["temperature"] = temp
+
+        # Process pressure if available
+        if "pressure" in weather_data:
+            p = float(weather_data["pressure"])
+            pressure_unit = weather_data.get("pressure_unit", "hPa").lower()
+
+            # Convert to hPa if needed
+            if pressure_unit == "inhg":
+                p = p * 33.8639
+
+            # Apply elevation correction if elevation is provided
+            if elevation > 0:
+                p = p * pow((1.0 + 0.000084229 * (elevation / pow(p, 0.19028))), 5.2553)
+
+            # Convert to tenths of hPa for APRS
+            p = int(float(p) * 10)
+            aprs_data["pressure"] = p
+
+        # Process humidity if available
+        if "humidity" in weather_data:
+            aprs_data["humidity"] = float(weather_data["humidity"])
+
+        # Process wind direction if available
+        if "wind_direction" in weather_data:
+            aprs_data["wind_dir"] = int(weather_data["wind_direction"])
+
+        # Process wind speed if available
+        if "wind_speed" in weather_data:
+            wind_speed = float(weather_data["wind_speed"])
+            wind_unit = weather_data.get("wind_speed_unit", "mph").lower()
+
+            # Convert to mph if needed
+            if wind_unit == "m/s":
+                wind_speed = wind_speed * 2.23694
+            elif wind_unit == "km/h":
+                wind_speed = wind_speed * 0.621371
+
+            aprs_data["wind_speed"] = wind_speed
+
+        # Process wind gust if available
+        if "wind_gust" in weather_data:
+            wind_gust = float(weather_data["wind_gust"])
+            gust_unit = weather_data.get("wind_gust_unit", weather_data.get("wind_speed_unit", "mph")).lower()
+
+            # Convert to mph if needed
+            if gust_unit == "m/s":
+                wind_gust = wind_gust * 2.23694
+            elif gust_unit == "km/h":
+                wind_gust = wind_gust * 0.621371
+
+            aprs_data["wind_gust"] = wind_gust
+
+        # Process rainfall if available
+        if "rain_since_midnight" in weather_data:
+            rain = float(weather_data["rain_since_midnight"])
+            rain_unit = weather_data.get("rain_unit", "in").lower()
+
+            # Convert to inches if needed
+            if rain_unit == "mm":
+                rain = rain * 0.0393701
+
+            aprs_data["rain_since_midnight"] = rain
+
+        # Log available weather data
+        available_data = [k for k, v in aprs_data.items() if v is not None]
+        logging.debug(f"Available weather data: {', '.join(available_data)}")
+        logging.debug(f"Processed weather data: {aprs_data}")
+
+        return aprs_data
+
     except FileNotFoundError:
-        logging.error(f"Configuration file {config_file} not found")
+        logging.error(f"Weather data file {json_file} not found")
         raise
-    except configparser.Error as e:
-        logging.error(f"Error parsing configuration: {e}")
-        raise
+    except json.JSONDecodeError as e:
+        logging.error(f"Error parsing JSON data: {e}")
+        raise ValueError(f"Invalid JSON format in {json_file}")
+    except Exception as e:
+        logging.error(f"Error processing weather data: {e}")
+        # Return empty data with all fields None if there's an error
+        return {
+            "temperature": None,
+            "pressure": None,
+            "humidity": None,
+            "wind_dir": None,
+            "wind_speed": None,
+            "wind_gust": None,
+            "rain_since_midnight": None,
+        }
 
-def convert_coordinates_to_aprs_format(lat, lon):
-   """
-   Convert decimal degrees coordinates to APRS format.
-   
-   Args:
-       lat (float): Latitude in decimal degrees format (e.g., 37.4025)
-       lon (float): Longitude in decimal degrees format (e.g., -122.1392)
-       
-   Returns:
-       tuple: A tuple containing (latitude_str, longitude_str) in APRS format
-   """
-   # Process latitude
-   lat_direction = 'N' if lat >= 0 else 'S'
-   lat_abs = abs(lat)
-   lat_degrees = int(lat_abs)
-   lat_minutes = (lat_abs - lat_degrees) * 60
-   lat_str = f"{lat_degrees:02d}{lat_minutes:05.2f}{lat_direction}"
-   
-   # Process longitude
-   lon_direction = 'E' if lon >= 0 else 'W'
-   lon_abs = abs(lon)
-   lon_degrees = int(lon_abs)
-   lon_minutes = (lon_abs - lon_degrees) * 60
-   lon_str = f"{lon_degrees:03d}{lon_minutes:05.2f}{lon_direction}"
-   
-   return (lat_str, lon_str)
 
-def make_aprs_wx(
-    config, wind_dir=None, wind_speed=None, wind_gust=None, temperature=None, rain_since_midnight=None, humidity=None, pressure=None
-):
+def make_aprs_wx(config, weather_data):
     """
     Assembles the payload of the APRS weather packet.
 
     Args:
         config (dict): Configuration containing station information
-        wind_dir (int, optional): Wind direction in degrees
-        wind_speed (float, optional): Wind speed
-        wind_gust (float, optional): Wind gust speed
-        temperature (float, optional): Temperature in Fahrenheit
-        rain_since_midnight (float, optional): Rain since midnight
-        humidity (float, optional): Humidity percentage
-        pressure (int, optional): Pressure in tenths of hPa/mbar
+        weather_data (dict): Dictionary containing all weather data in APRS-compatible units
 
     Returns:
         str: Formatted APRS weather packet string
@@ -185,27 +195,97 @@ def make_aprs_wx(
 
         return f"{number:{format_type}}".zfill(length)
 
+    # Get the HHMMZ time string in Zulu/UTC
     timeStringZulu = time.strftime("%d%H%M")
 
-    lat_str, lon_str = convert_coordinates_to_aprs_format(config['STATIONLATITUDE'], config['STATIONLONGITUDE'])
-
+    # Convert decimal coordinates to APRS format
+    lat_str, lon_str = convert_coordinates_to_aprs_format(config["STATIONLATITUDE"], config["STATIONLONGITUDE"])
 
     wx_packet = "@%sz%s/%s_%s/%sg%st%sP%sh%sb%s%s" % (
         timeStringZulu,
         lat_str,
         lon_str,
-        str_or_dots(wind_dir, 3),
-        str_or_dots(wind_speed, 3),
-        str_or_dots(wind_gust, 3),
-        str_or_dots(temperature, 3),
-        str_or_dots(rain_since_midnight, 3),
-        str_or_dots(humidity, 2),
-        str_or_dots(pressure, 5),
+        str_or_dots(weather_data.get("wind_dir"), 3),
+        str_or_dots(weather_data.get("wind_speed"), 3),
+        str_or_dots(weather_data.get("wind_gust"), 3),
+        str_or_dots(weather_data.get("temperature"), 3),
+        str_or_dots(weather_data.get("rain_since_midnight"), 3),
+        str_or_dots(weather_data.get("humidity"), 2),
+        str_or_dots(weather_data.get("pressure"), 5),
         config["STATION_TYPE"],
     )
 
     logging.debug(f"Created APRS packet: {wx_packet}")
     return wx_packet
+
+
+# Load configuration from ini file
+def load_config(config_file="aprs-is-wx.ini"):
+    """
+    Load configuration settings from an INI file.
+
+    Args:
+        config_file (str): Path to the configuration file
+
+    Returns:
+        dict: Dictionary containing configuration settings
+
+    Raises:
+        FileNotFoundError: If the configuration file doesn't exist
+        configparser.Error: If there's an error parsing the configuration
+    """
+    try:
+        config = configparser.ConfigParser()
+        config.read(config_file)
+
+        settings = {
+            "ELEVATION": config.getfloat("Station", "elevation"),
+            "STATIONLATITUDE": config.getfloat("Station", "lat"),
+            "STATIONLONGITUDE": config.getfloat("Station", "lon"),
+            "STATION_TYPE": config.get("Station", "type"),
+            "METEO_FILE": config.get("Station", "meteo_json"),
+            "APRS_HOST": config.get("APRS", "host"),
+            "APRS_PORT": config.getint("APRS", "port"),
+            "APRS_USER": config.get("APRS", "user"),
+            "APRS_PASS": config.get("APRS", "pass"),
+            "CALLSIGN": config.get("APRS", "callsign"),
+        }
+
+        return settings
+    except FileNotFoundError:
+        logging.error(f"Configuration file {config_file} not found")
+        raise
+    except configparser.Error as e:
+        logging.error(f"Error parsing configuration: {e}")
+        raise
+
+
+def convert_coordinates_to_aprs_format(lat, lon):
+    """
+    Convert decimal degrees coordinates to APRS format.
+
+    Args:
+        lat (float): Latitude in decimal degrees format (e.g., 37.4025)
+        lon (float): Longitude in decimal degrees format (e.g., -122.1392)
+
+    Returns:
+        tuple: A tuple containing (latitude_str, longitude_str) in APRS format
+    """
+    # Process latitude
+    lat_direction = "N" if lat >= 0 else "S"
+    lat_abs = abs(lat)
+    lat_degrees = int(lat_abs)
+    lat_minutes = (lat_abs - lat_degrees) * 60
+    lat_str = f"{lat_degrees:02d}{lat_minutes:05.2f}{lat_direction}"
+
+    # Process longitude
+    lon_direction = "E" if lon >= 0 else "W"
+    lon_abs = abs(lon)
+    lon_degrees = int(lon_abs)
+    lon_minutes = (lon_abs - lon_degrees) * 60
+    lon_str = f"{lon_degrees:03d}{lon_minutes:05.2f}{lon_direction}"
+
+    return (lat_str, lon_str)
 
 
 def send_aprs_with_retry(config, wx, max_retries=3, retry_delay=5):
@@ -297,20 +377,15 @@ def uptime():
 
 
 def main():
-    """
-    Main function to run the APRS weather packet submission.
-    """
     try:
         # Load configuration
         config = load_config()
 
         # Get weather data
-        temp, p, hum = get_wx_data(config["ELEVATION"])
+        weather_data = get_wx_data(config["METEO_FILE"], config["ELEVATION"])
 
-        # Create weather packet
-        wx = make_aprs_wx(
-            config, wind_dir=None, wind_speed=None, wind_gust=None, temperature=temp, rain_since_midnight=None, humidity=hum, pressure=p
-        )
+        # Create weather packet with all available data
+        wx = make_aprs_wx(config, weather_data)
 
         # Log the packet
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -329,6 +404,8 @@ def main():
     except Exception as e:
         logging.error(f"Program execution failed: {e}")
         return 1
+
+    return 0
 
 
 if __name__ == "__main__":
