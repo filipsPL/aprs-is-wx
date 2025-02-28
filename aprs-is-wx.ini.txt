@@ -1,0 +1,13 @@
+[Station]
+elevation = 110
+lat = 53.2320230
+lon = 20.0713454
+type = WX Meteo Station
+meteo_json = meteo.json
+
+[APRS]
+host = radom.aprs2.net
+port = 14580
+user = SP5XXX
+pass = 666666
+callsign = SP5XXX-13

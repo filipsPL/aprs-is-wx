@@ -1,0 +1,14 @@
+{
+  "temperature": 18.5,
+  "temperature_unit": "C",
+  "pressure": 1013.25,
+  "pressure_unit": "hPa",
+  "humidity": 65,
+  "wind_direction": 270,
+  "wind_speed": 15.7,
+  "wind_speed_unit": "km/h",
+  "wind_gust": 25.3,
+  "wind_gust_unit": "km/h",
+  "rain_since_midnight": 2.5,
+  "rain_unit": "mm",
+}
