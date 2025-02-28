@@ -27,7 +27,8 @@ import configparser
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("aprs_weather.log"), logging.StreamHandler(sys.stdout)],
+    # handlers=[logging.FileHandler("aprs_weather.log"), logging.StreamHandler(sys.stdout)],
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 
@@ -236,7 +237,7 @@ def send_aprs_with_retry(config, wx, max_retries=3, retry_delay=5):
             s.connect((host, port))
 
             # aprs login
-            login_string = f"user {user} pass {passcode} vers KD7LXL-Python 0.1\n"
+            login_string = f"user {user} pass {passcode} vers aprs-is-wx.py\n"
             s.send(login_string.encode())
 
             # send packet
