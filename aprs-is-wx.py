@@ -138,6 +138,7 @@ def get_wx_data(json_file, elevation=0):
         logging.debug(f"Available weather data: {', '.join(available_data)}")
         logging.debug(f"Processed weather data: {aprs_data}")
 
+        logging.info(f"APRS WX dictionary: {aprs_data}")
         return aprs_data
 
     except FileNotFoundError:
