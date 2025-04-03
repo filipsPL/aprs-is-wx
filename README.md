@@ -111,4 +111,4 @@ This program is based on work by Tom Hayward and is distributed under the BSD Li
 ## Acknowledgments
 
 - Originally written by Tom Hayward
-- Enhanced by filipsPL and others
+- Enhanced by Filip SP5FLS
