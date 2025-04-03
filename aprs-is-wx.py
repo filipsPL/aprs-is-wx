@@ -10,7 +10,7 @@ packets to the APRS Internet Service (APRS-IS)
 Loosely based on the program from Tom Hayward
 https://github.com/kd7lxl/pywxtd/blob/master/pywxtd.py
 
-Further enchanced by FilipsPL 2017-2025
+Further enchanced by Filip SP5FLP 2017-2025
 """
 
 link = ">https://github.com/filipsPL/aprs-is-wx 2025.04.03"
