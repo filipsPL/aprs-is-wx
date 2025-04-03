@@ -4,7 +4,7 @@
 """
 APRS Weather Packet Submitter
 
-This script builds and submits Amateur Packet Reporting System (APRS) weather 
+This script builds and submits Amateur Packet Reporting System (APRS) weather
 packets to the APRS Internet Service (APRS-IS)
 
 Loosely based on the program from Tom Hayward
@@ -13,12 +13,13 @@ https://github.com/kd7lxl/pywxtd/blob/master/pywxtd.py
 Further enchanced by FilipsPL 2017-2025
 """
 
+link = ">https://github.com/filipsPL/BASH-iGate-rtl_sdr 2025.04.03"
+
 import sys
 import os
 import time
 import json
 import logging
-import unittest
 from datetime import datetime, timedelta
 from socket import *
 import configparser
@@ -399,6 +400,13 @@ def main():
                 status = f">Uptime: {uptime()}"
                 logging.info(f"Sending status: {status}")
                 send_aprs_with_retry(config, status)
+
+                current_minute = datetime.now().minute
+                if current_minute == 15 or current_minute == 45:
+                    # send link every 30 minutes
+                    logging.info(f"Sending link: {link}")
+                    send_aprs_with_retry(config, link)
+
             except Exception as e:
                 logging.error(f"Error sending uptime status: {e}")
 
