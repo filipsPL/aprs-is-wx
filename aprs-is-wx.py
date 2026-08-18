@@ -130,7 +130,7 @@ def get_wx_data(json_file, elevation=0):
 
             # Convert to inches if needed
             if rain_unit == "mm":
-                rain = rain * 0.0393701
+                rain = rain * 0.0393701 * 100
 
             aprs_data["rain_since_midnight"] = rain
 
