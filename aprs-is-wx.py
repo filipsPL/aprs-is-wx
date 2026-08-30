@@ -319,8 +319,22 @@ def send_aprs_with_retry(config, wx, max_retries=3, retry_delay=5):
             s.connect((host, port))
 
             # aprs login
-            login_string = f"user {user} pass {passcode} vers aprs-is-wx.py\n"
+            login_string = f"user {user} pass {passcode} vers aprs-is-wx.py 1.0\n"
             s.send(login_string.encode())
+
+            # Read and check the server's login response (e.g. "# logresp CALL verified, server ...")
+            # so a rejected login doesn't get silently reported as a successful send
+            login_response = s.recv(4096).decode(errors="replace").strip()
+            logging.debug(f"Login response: {login_response}")
+
+            if "invalid" in login_response.lower():
+                logging.error(f"APRS-IS rejected login: {login_response}")
+                s.close()
+                return False
+            elif "unverified" in login_response.lower():
+                logging.warning(f"APRS-IS login unverified, packet may be dropped: {login_response}")
+            elif "verified" not in login_response.lower():
+                logging.warning(f"Unexpected APRS-IS login response: {login_response}")
 
             # send packet
             packet_string = f"{callsign}>APRS:{wx}\n"
