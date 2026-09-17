@@ -6,6 +6,7 @@ A Python tool for submitting weather data to the Automatic Packet Reporting Syst
 
 `aprs-is-wx.py` is a flexible and robust tool that collects weather data from JSON files and submits it to the APRS Internet Service (APRS-IS) or Citizen Weather Observer Program (CWOP). It handles unit conversions, coordinates formatting, and provides reliable network communication with error handling and retry mechanisms.
 
+[![Tests](https://github.com/filipsPL/aprs-is-wx/actions/workflows/tests.yml/badge.svg)](https://github.com/filipsPL/aprs-is-wx/actions/workflows/tests.yml) [![CodeQL](https://github.com/filipsPL/aprs-is-wx/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/filipsPL/aprs-is-wx/actions/workflows/github-code-scanning/codeql)
 
 ## Features
 
