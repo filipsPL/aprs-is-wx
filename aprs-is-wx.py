@@ -323,8 +323,25 @@ def send_aprs_with_retry(config, wx, max_retries=3, retry_delay=5):
             s.send(login_string.encode())
 
             # Read and check the server's login response (e.g. "# logresp CALL verified, server ...")
-            # so a rejected login doesn't get silently reported as a successful send
-            login_response = s.recv(4096).decode(errors="replace").strip()
+            # so a rejected login doesn't get silently reported as a successful send.
+            # aprsc sends a "# aprsc ..." banner as soon as the TCP connection is made,
+            # before it has processed the login line, so a single recv() right after
+            # sending login can pick up just that banner instead of the actual
+            # "# logresp ..." reply. Keep reading until we see the logresp line.
+            buffer = ""
+            s.settimeout(10)
+            try:
+                while "logresp" not in buffer.lower():
+                    chunk = s.recv(4096).decode(errors="replace")
+                    if not chunk:
+                        break
+                    buffer += chunk
+            except timeout:
+                pass
+            finally:
+                s.settimeout(30)
+
+            login_response = buffer.strip()
             logging.debug(f"Login response: {login_response}")
 
             if "invalid" in login_response.lower():
