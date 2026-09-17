@@ -1,2 +1,4 @@
 aprs-is-wx.ini
 meteo.json
+__pycache__/
+.pytest_cache/

@@ -104,6 +104,11 @@ Screenshot:
 2025-03-01 17:26:11,116 - INFO - Successfully sent APRS packet
 ```
 
+## Tests
+
+Run `pytest -v` to run local tests (just for developers, no need to do).
+
+
 ## License
 
 This program is based on work by Tom Hayward and is distributed under the BSD License.
